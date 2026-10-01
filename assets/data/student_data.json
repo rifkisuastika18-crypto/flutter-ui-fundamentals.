@@ -1,0 +1,43 @@
+{
+  "student": {
+    "nim": "2415051095",
+    "name": "Gede Rifki Swastika Utama"
+  },
+  "courses": [
+    {
+      "code": "MOB01",
+      "title": "Git & GitHub",
+      "credits": 2,
+      "status": "done",
+      "grade": "A"
+    },
+    {
+      "code": "MOB02",
+      "title": "Dart Fundamentals",
+      "credits": 2,
+      "status": "done",
+      "grade": "A"
+    },
+    {
+      "code": "MOB03",
+      "title": "Flutter UI Fundamentals",
+      "credits": 3,
+      "status": "active",
+      "grade": "Sedang Berjalan"
+    },
+    {
+      "code": "MOB04",
+      "title": "Navigation & Routing",
+      "credits": 2,
+      "status": "planned",
+      "grade": "-"
+    },
+    {
+      "code": "MOB05",
+      "title": "State Management & Provider",
+      "credits": 3,
+      "status": "planned",
+      "grade": "-"
+    }
+  ]
+}
