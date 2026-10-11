@@ -20,6 +20,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
+  # Menambahkan asset data JSON dan gambar profil agar terbaca oleh aplikasi
   assets:
-    - assets/images/
-    - assets/data/
+    - assets/data/student_data.json
+    - assets/images/profile.jpg
