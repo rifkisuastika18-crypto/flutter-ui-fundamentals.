@@ -2,6 +2,7 @@ import 'dart:ui' show Size;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 
 import 'package:flutter_ui_fundamentals/course_state.dart';
 import 'package:flutter_ui_fundamentals/main.dart';
@@ -41,6 +42,19 @@ void main() {
             widget is CircleAvatar && widget.backgroundImage is AssetImage,
       ),
       findsOneWidget,
+    );
+  });
+
+  testWidgets('MyApp provides CourseState above the navigation shell', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const MyApp());
+    await tester.pump();
+
+    final context = tester.element(find.byType(MainNavigationPage));
+    expect(
+      Provider.of<CourseState>(context, listen: false),
+      isA<CourseState>(),
     );
   });
 

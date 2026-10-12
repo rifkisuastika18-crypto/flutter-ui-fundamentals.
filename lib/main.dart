@@ -2,6 +2,9 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:provider/provider.dart';
+
+import 'course_state.dart';
 
 const defaultStudentName = 'Gede Rifki Swastika Utama';
 const defaultStudentNim = '2415051095';
@@ -46,11 +49,14 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Course Explorer',
-      theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.indigo),
-      home: const MainNavigationPage(),
+    return ChangeNotifierProvider(
+      create: (_) => CourseState(),
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'Course Explorer',
+        theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.indigo),
+        home: const MainNavigationPage(),
+      ),
     );
   }
 }
