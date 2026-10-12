@@ -66,20 +66,38 @@ class MainNavigationPage extends StatefulWidget {
 
 class _MainNavigationPageState extends State<MainNavigationPage> {
   late final Future<Map<String, dynamic>> _studentFuture;
-  late final List<Widget> _pages;
   final _pageStackKey = GlobalKey();
+  Set<String> _favoriteCourseCodes = {};
   int _selectedIndex = 0;
 
   @override
   void initState() {
     super.initState();
     _studentFuture = widget.studentFuture ?? loadStudentData();
-    _pages = [
-      HomePage(studentFuture: _studentFuture),
-      CoursesPage(studentFuture: _studentFuture),
-      ProfilePage(studentFuture: _studentFuture),
-    ];
   }
+
+  void _toggleFavorite(String courseCode) {
+    setState(() {
+      _favoriteCourseCodes = {..._favoriteCourseCodes};
+      if (!_favoriteCourseCodes.add(courseCode)) {
+        _favoriteCourseCodes.remove(courseCode);
+      }
+    });
+  }
+
+  List<Widget> _buildPages() => [
+    HomePage(
+      studentFuture: _studentFuture,
+      favoriteCourseCodes: _favoriteCourseCodes,
+      onToggleFavorite: _toggleFavorite,
+    ),
+    CoursesPage(
+      studentFuture: _studentFuture,
+      favoriteCourseCodes: _favoriteCourseCodes,
+      onToggleFavorite: _toggleFavorite,
+    ),
+    ProfilePage(studentFuture: _studentFuture),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -109,7 +127,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
     return IndexedStack(
       key: _pageStackKey,
       index: _selectedIndex,
-      children: _pages,
+      children: _buildPages(),
     );
   }
 
@@ -172,8 +190,15 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
 
 class HomePage extends StatefulWidget {
   final Future<Map<String, dynamic>>? studentFuture;
+  final Set<String> favoriteCourseCodes;
+  final ValueChanged<String> onToggleFavorite;
 
-  const HomePage({super.key, this.studentFuture});
+  const HomePage({
+    super.key,
+    this.studentFuture,
+    required this.favoriteCourseCodes,
+    required this.onToggleFavorite,
+  });
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -321,6 +346,8 @@ class _HomePageState extends State<HomePage> {
                   courses: courses,
                   studentName: studentName,
                   studentNim: studentId,
+                  favoriteCourseCodes: widget.favoriteCourseCodes,
+                  onToggleFavorite: widget.onToggleFavorite,
                 ),
               ],
             );
@@ -333,8 +360,15 @@ class _HomePageState extends State<HomePage> {
 
 class CoursesPage extends StatelessWidget {
   final Future<Map<String, dynamic>> studentFuture;
+  final Set<String> favoriteCourseCodes;
+  final ValueChanged<String> onToggleFavorite;
 
-  const CoursesPage({super.key, required this.studentFuture});
+  const CoursesPage({
+    super.key,
+    required this.studentFuture,
+    required this.favoriteCourseCodes,
+    required this.onToggleFavorite,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -392,6 +426,8 @@ class CoursesPage extends StatelessWidget {
                 courses: courses,
                 studentName: studentName,
                 studentNim: studentNim,
+                favoriteCourseCodes: favoriteCourseCodes,
+                onToggleFavorite: onToggleFavorite,
               ),
             ],
           );
@@ -1077,12 +1113,16 @@ class CourseGrid extends StatelessWidget {
   final List<dynamic> courses;
   final String studentName;
   final String studentNim;
+  final Set<String> favoriteCourseCodes;
+  final ValueChanged<String> onToggleFavorite;
 
   const CourseGrid({
     super.key,
     required this.courses,
     required this.studentName,
     required this.studentNim,
+    required this.favoriteCourseCodes,
+    required this.onToggleFavorite,
   });
 
   @override
@@ -1109,6 +1149,11 @@ class CourseGrid extends StatelessWidget {
             final course = courses[index] as Map<String, dynamic>;
             return CourseItemCard(
               course: course,
+              isFavorite: favoriteCourseCodes.contains(
+                course['code'] as String? ?? '',
+              ),
+              onToggleFavorite: () =>
+                  onToggleFavorite(course['code'] as String? ?? ''),
               onTap: () async {
                 final result = await Navigator.push<bool>(
                   context,
@@ -1121,6 +1166,10 @@ class CourseGrid extends StatelessWidget {
                   ),
                 );
                 if (result == true && context.mounted) {
+                  final courseCode = course['code'] as String? ?? '';
+                  if (!favoriteCourseCodes.contains(courseCode)) {
+                    onToggleFavorite(courseCode);
+                  }
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Course ditambahkan ke favorite'),
@@ -1314,16 +1363,23 @@ class StatCard extends StatelessWidget {
 // ==========================================
 class CourseItemCard extends StatefulWidget {
   final Map<String, dynamic> course;
+  final bool isFavorite;
+  final VoidCallback onToggleFavorite;
   final Future<void> Function() onTap;
 
-  const CourseItemCard({super.key, required this.course, required this.onTap});
+  const CourseItemCard({
+    super.key,
+    required this.course,
+    required this.isFavorite,
+    required this.onToggleFavorite,
+    required this.onTap,
+  });
 
   @override
   State<CourseItemCard> createState() => _CourseItemCardState();
 }
 
 class _CourseItemCardState extends State<CourseItemCard> {
-  bool _isFavorite = false;
   bool _isOpeningDetails = false;
 
   Future<void> _openDetails() async {
@@ -1403,16 +1459,16 @@ class _CourseItemCardState extends State<CourseItemCard> {
                   ),
                   IconButton(
                     key: ValueKey('course-favorite-${course['code']}'),
-                    tooltip: _isFavorite
+                    tooltip: widget.isFavorite
                         ? 'Hapus dari favorite'
                         : 'Tambah ke favorite',
-                    onPressed: () {
-                      setState(() => _isFavorite = !_isFavorite);
-                    },
+                    onPressed: widget.onToggleFavorite,
                     visualDensity: VisualDensity.compact,
                     icon: Icon(
-                      _isFavorite ? Icons.favorite : Icons.favorite_border,
-                      color: _isFavorite ? Colors.red : Colors.grey,
+                      widget.isFavorite
+                          ? Icons.favorite
+                          : Icons.favorite_border,
+                      color: widget.isFavorite ? Colors.red : Colors.grey,
                     ),
                   ),
                   Container(

@@ -150,6 +150,56 @@ void main() {
     expect(find.text('Buka Detail'), findsOneWidget);
   });
 
+  testWidgets('favorite state is shared between Home and Courses', (
+    WidgetTester tester,
+  ) async {
+    final courses = [
+      {
+        'code': 'SHR01',
+        'title': 'Shared State',
+        'credits': 2,
+        'status': 'done',
+      },
+      {'code': 'SHR02', 'title': 'Callbacks', 'credits': 3, 'status': 'active'},
+    ];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MainNavigationPage(
+          studentFuture: Future.value({
+            'student': {'name': defaultStudentName, 'nim': defaultStudentNim},
+            'courses': courses,
+          }),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    final favoriteKey = const ValueKey('course-favorite-SHR01');
+    expect(find.byIcon(Icons.favorite_border), findsNWidgets(2));
+    await tester.tap(find.byKey(favoriteKey));
+    await tester.pump();
+
+    expect(
+      find.descendant(
+        of: find.byKey(favoriteKey),
+        matching: find.byIcon(Icons.favorite),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('tab-courses')));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(
+      find.descendant(
+        of: find.byKey(favoriteKey),
+        matching: find.byIcon(Icons.favorite),
+      ),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Course Explorer shows identity and five courses responsively', (
     WidgetTester tester,
   ) async {
@@ -175,7 +225,13 @@ void main() {
     for (final (width, columns) in [(390.0, 1), (1200.0, 3)]) {
       tester.view.physicalSize = Size(width, 900);
       await tester.pumpWidget(
-        MaterialApp(home: CoursesPage(studentFuture: studentFuture)),
+        MaterialApp(
+          home: CoursesPage(
+            studentFuture: studentFuture,
+            favoriteCourseCodes: const {},
+            onToggleFavorite: (_) {},
+          ),
+        ),
       );
       await tester.pump();
       await tester.pump();
@@ -362,6 +418,8 @@ void main() {
                 courses: courses,
                 studentName: 'Mahasiswa Tes',
                 studentNim: '123456',
+                favoriteCourseCodes: const {},
+                onToggleFavorite: (_) {},
               ),
             ),
           ),
@@ -437,6 +495,8 @@ void main() {
             },
             'courses': <dynamic>[],
           }),
+          favoriteCourseCodes: const {},
+          onToggleFavorite: (_) {},
         ),
       ),
     );
@@ -504,6 +564,8 @@ void main() {
             courses: [course],
             studentName: 'Gede Rifki Swastika Utama',
             studentNim: '2415051095',
+            favoriteCourseCodes: const {},
+            onToggleFavorite: (_) {},
           ),
         ),
       ),
@@ -533,6 +595,7 @@ void main() {
     WidgetTester tester,
   ) async {
     var tapped = false;
+    var isFavorite = false;
     final course = {
       'code': 'MOB01',
       'title': 'Flutter UI Fundamentals',
@@ -546,12 +609,20 @@ void main() {
           body: Center(
             child: SizedBox(
               width: 340,
-              child: CourseItemCard(
-                course: course,
-                onTap: () async {
-                  tapped = true;
-                  await Future<void>.delayed(const Duration(milliseconds: 300));
-                },
+              child: StatefulBuilder(
+                builder: (context, setState) => CourseItemCard(
+                  course: course,
+                  isFavorite: isFavorite,
+                  onToggleFavorite: () {
+                    setState(() => isFavorite = !isFavorite);
+                  },
+                  onTap: () async {
+                    tapped = true;
+                    await Future<void>.delayed(
+                      const Duration(milliseconds: 300),
+                    );
+                  },
+                ),
               ),
             ),
           ),
@@ -610,6 +681,8 @@ void main() {
               width: 340,
               child: CourseItemCard(
                 course: course,
+                isFavorite: false,
+                onToggleFavorite: () {},
                 onTap: () async {
                   openCount++;
                   await Future<void>.delayed(const Duration(milliseconds: 500));
