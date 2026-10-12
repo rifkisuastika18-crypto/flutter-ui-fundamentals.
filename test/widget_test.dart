@@ -3,9 +3,26 @@ import 'dart:ui' show Size;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:flutter_ui_fundamentals/course_state.dart';
 import 'package:flutter_ui_fundamentals/main.dart';
 
 void main() {
+  test('CourseState toggles favorites and notifies listeners', () {
+    final state = CourseState();
+    var notificationCount = 0;
+    state.addListener(() => notificationCount++);
+
+    state.toggleFavorite('MOB01');
+    expect(state.favorites, contains('MOB01'));
+    expect(notificationCount, 1);
+
+    state.toggleFavorite('MOB01');
+    expect(state.favorites, isNot(contains('MOB01')));
+    expect(notificationCount, 2);
+
+    state.dispose();
+  });
+
   testWidgets('dashboard loads student information', (
     WidgetTester tester,
   ) async {
