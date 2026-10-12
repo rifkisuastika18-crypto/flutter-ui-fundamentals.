@@ -68,6 +68,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   late final Future<Map<String, dynamic>> _studentFuture;
   final _pageStackKey = GlobalKey();
   Set<String> _favoriteCourseCodes = {};
+  final ValueNotifier<int> _favoriteCount = ValueNotifier<int>(0);
   int _selectedIndex = 0;
 
   @override
@@ -82,6 +83,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
       if (!_favoriteCourseCodes.add(courseCode)) {
         _favoriteCourseCodes.remove(courseCode);
       }
+      _favoriteCount.value = _favoriteCourseCodes.length;
     });
   }
 
@@ -95,9 +97,16 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
       studentFuture: _studentFuture,
       favoriteCourseCodes: _favoriteCourseCodes,
       onToggleFavorite: _toggleFavorite,
+      favoriteCount: _favoriteCount,
     ),
     ProfilePage(studentFuture: _studentFuture),
   ];
+
+  @override
+  void dispose() {
+    _favoriteCount.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -362,12 +371,14 @@ class CoursesPage extends StatelessWidget {
   final Future<Map<String, dynamic>> studentFuture;
   final Set<String> favoriteCourseCodes;
   final ValueChanged<String> onToggleFavorite;
+  final ValueNotifier<int> favoriteCount;
 
   const CoursesPage({
     super.key,
     required this.studentFuture,
     required this.favoriteCourseCodes,
     required this.onToggleFavorite,
+    required this.favoriteCount,
   });
 
   @override
@@ -417,6 +428,15 @@ class CoursesPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
+              ValueListenableBuilder<int>(
+                valueListenable: favoriteCount,
+                builder: (context, count, child) => Text(
+                  'Favorite: $count',
+                  key: const ValueKey('favorite-count'),
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              const SizedBox(height: 12),
               Text(
                 '${courses.length} mata kuliah',
                 style: Theme.of(context).textTheme.titleMedium,

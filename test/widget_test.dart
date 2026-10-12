@@ -179,6 +179,7 @@ void main() {
     expect(find.byIcon(Icons.favorite_border), findsNWidgets(2));
     await tester.tap(find.byKey(favoriteKey));
     await tester.pump();
+    expect(find.text('Favorite: 1'), findsNothing);
 
     expect(
       find.descendant(
@@ -197,6 +198,11 @@ void main() {
       ),
       findsOneWidget,
     );
+    expect(find.text('Favorite: 1'), findsOneWidget);
+
+    await tester.tap(find.byKey(favoriteKey));
+    await tester.pump();
+    expect(find.text('Favorite: 0'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -221,6 +227,8 @@ void main() {
       'student': {'name': defaultStudentName, 'nim': defaultStudentNim},
       'courses': courses,
     });
+    final favoriteCount = ValueNotifier<int>(0);
+    addTearDown(favoriteCount.dispose);
 
     for (final (width, columns) in [(390.0, 1), (1200.0, 3)]) {
       tester.view.physicalSize = Size(width, 900);
@@ -230,6 +238,7 @@ void main() {
             studentFuture: studentFuture,
             favoriteCourseCodes: const {},
             onToggleFavorite: (_) {},
+            favoriteCount: favoriteCount,
           ),
         ),
       );
