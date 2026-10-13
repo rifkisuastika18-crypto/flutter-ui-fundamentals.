@@ -1,55 +1,15 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:provider/provider.dart';
 
 import 'course_state.dart';
 import 'models/course.dart';
+import 'services/course_service.dart';
 
 const defaultStudentName = 'Gede Rifki Swastika Utama';
 const defaultStudentNim = '2415051095';
 
 void main() {
   runApp(const MyApp());
-}
-
-// Function Pembaca JSON dengan data fallback/bawaan identitas Anda
-Future<Map<String, dynamic>> loadStudentData() async {
-  try {
-    final jsonString = await rootBundle.loadString(
-      'assets/data/student_data.json',
-    );
-    return jsonDecode(jsonString) as Map<String, dynamic>;
-  } catch (e) {
-    // Fallback data langsung memuat identitas Gede Rifki Swastika Utama (2415051095)
-    return {
-      "student": {"name": "Gede Rifki Swastika Utama", "nim": "2415051095"},
-      "courses": [
-        {
-          "code": "IF101",
-          "title": "Pemrograman Mobile",
-          "credits": 3,
-          "status": "active",
-          "grade": "A",
-        },
-        {
-          "code": "IF102",
-          "title": "Struktur Data & Algoritma",
-          "credits": 4,
-          "status": "done",
-          "grade": "A",
-        },
-      ],
-    };
-  }
-}
-
-List<Course> parseCourses(Map<String, dynamic> data) {
-  final courseJson = data['courses'] as List<dynamic>;
-  return courseJson
-      .map((json) => Course.fromJson(json as Map<String, dynamic>))
-      .toList(growable: false);
 }
 
 class MyApp extends StatelessWidget {
@@ -79,6 +39,7 @@ class MainNavigationPage extends StatefulWidget {
 }
 
 class _MainNavigationPageState extends State<MainNavigationPage> {
+  late final CourseService _courseService;
   late final Future<Map<String, dynamic>> _studentFuture;
   final _pageStackKey = GlobalKey();
   int _selectedIndex = 0;
@@ -86,7 +47,8 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   @override
   void initState() {
     super.initState();
-    _studentFuture = widget.studentFuture ?? loadStudentData();
+    _courseService = CourseService();
+    _studentFuture = widget.studentFuture ?? _courseService.loadStudentData();
   }
 
   List<Widget> _buildPages() => [
@@ -200,7 +162,7 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     // Inisialisasi Future hanya sekali saat widget dibuat
-    studentFuture = widget.studentFuture ?? loadStudentData();
+    studentFuture = widget.studentFuture ?? CourseService().loadStudentData();
   }
 
   @override
@@ -254,7 +216,9 @@ class _HomePageState extends State<HomePage> {
             // 3. Data Loaded State
             final data = snapshot.data!;
             final student = data['student'] as Map<String, dynamic>;
-            final courses = parseCourses(data);
+            final courses = CourseService.parseCourses(
+              data['courses'] as List<dynamic>,
+            );
 
             final String studentName =
                 student['name'] as String? ?? 'Gede Rifki Swastika Utama';
@@ -376,7 +340,9 @@ class CoursesPage extends StatelessWidget {
           }
 
           final student = snapshot.data!['student'] as Map<String, dynamic>;
-          final courses = parseCourses(snapshot.data!);
+          final courses = CourseService.parseCourses(
+            snapshot.data!['courses'] as List<dynamic>,
+          );
           final studentName = student['name'] as String? ?? defaultStudentName;
           final studentNim = student['nim'] as String? ?? defaultStudentNim;
           return ListView(

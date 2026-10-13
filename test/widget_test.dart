@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import 'package:flutter_ui_fundamentals/course_state.dart';
 import 'package:flutter_ui_fundamentals/main.dart';
+import 'package:flutter_ui_fundamentals/services/course_service.dart';
 import 'package:flutter_ui_fundamentals/models/course.dart';
 
 Widget withCourseState(Widget child) => ChangeNotifierProvider<CourseState>(
@@ -45,12 +46,45 @@ void main() {
     expect(course.grade, '-');
   });
 
+  testWidgets('CourseService loads typed courses from the JSON asset', (
+    WidgetTester tester,
+  ) async {
+    final courses = await CourseService().loadCourses();
+
+    expect(courses, hasLength(5));
+    expect(courses.first, isA<Course>());
+    expect(courses.first.code, 'MOB01');
+    expect(courses.first.title, 'Git & GitHub');
+    expect(courses.first.credits, 2);
+    expect(courses.first.status, 'done');
+  });
+
   testWidgets('dashboard loads student information', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const MyApp());
-    await tester.pumpAndSettle();
+    await tester.pumpWidget(
+      withCourseState(
+        MaterialApp(
+          home: HomePage(
+            studentFuture: Future.value({
+              'student': {'name': defaultStudentName, 'nim': defaultStudentNim},
+              'courses': [
+                {
+                  'code': 'MOB01',
+                  'title': 'Git & GitHub',
+                  'credits': 2,
+                  'status': 'done',
+                },
+              ],
+            }),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
 
+    expect(find.byType(ProfileHeaderCard), findsOneWidget);
     expect(find.text('Course Explorer'), findsOneWidget);
     expect(find.byType(HomePage), findsOneWidget);
     expect(find.text('Gede Rifki Swastika Utama'), findsOneWidget);
