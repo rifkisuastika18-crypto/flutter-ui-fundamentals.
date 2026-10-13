@@ -7,6 +7,11 @@ import 'package:provider/provider.dart';
 import 'package:flutter_ui_fundamentals/course_state.dart';
 import 'package:flutter_ui_fundamentals/main.dart';
 
+Widget withCourseState(Widget child) => ChangeNotifierProvider<CourseState>(
+  create: (_) => CourseState(),
+  child: child,
+);
+
 void main() {
   test('CourseState toggles favorites and notifies listeners', () {
     final state = CourseState();
@@ -122,15 +127,17 @@ void main() {
     }
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: MainNavigationPage(
-          studentFuture: Future.value({
-            'student': {
-              'name': 'Gede Rifki Swastika Utama',
-              'nim': '2415051095',
-            },
-            'courses': <dynamic>[],
-          }),
+      withCourseState(
+        MaterialApp(
+          home: MainNavigationPage(
+            studentFuture: Future.value({
+              'student': {
+                'name': 'Gede Rifki Swastika Utama',
+                'nim': '2415051095',
+              },
+              'courses': <dynamic>[],
+            }),
+          ),
         ),
       ),
     );
@@ -194,12 +201,14 @@ void main() {
       {'code': 'SHR02', 'title': 'Callbacks', 'credits': 3, 'status': 'active'},
     ];
     await tester.pumpWidget(
-      MaterialApp(
-        home: MainNavigationPage(
-          studentFuture: Future.value({
-            'student': {'name': defaultStudentName, 'nim': defaultStudentNim},
-            'courses': courses,
-          }),
+      withCourseState(
+        MaterialApp(
+          home: MainNavigationPage(
+            studentFuture: Future.value({
+              'student': {'name': defaultStudentName, 'nim': defaultStudentNim},
+              'courses': courses,
+            }),
+          ),
         ),
       ),
     );
@@ -258,19 +267,11 @@ void main() {
       'student': {'name': defaultStudentName, 'nim': defaultStudentNim},
       'courses': courses,
     });
-    final favoriteCount = ValueNotifier<int>(0);
-    addTearDown(favoriteCount.dispose);
-
     for (final (width, columns) in [(390.0, 1), (1200.0, 3)]) {
       tester.view.physicalSize = Size(width, 900);
       await tester.pumpWidget(
-        MaterialApp(
-          home: CoursesPage(
-            studentFuture: studentFuture,
-            favoriteCourseCodes: const {},
-            onToggleFavorite: (_) {},
-            favoriteCount: favoriteCount,
-          ),
+        withCourseState(
+          MaterialApp(home: CoursesPage(studentFuture: studentFuture)),
         ),
       );
       await tester.pump();
@@ -317,15 +318,17 @@ void main() {
     tester.view.physicalSize = const Size(700, 900);
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: MainNavigationPage(
-          studentFuture: Future.value({
-            'student': {
-              'name': 'Gede Rifki Swastika Utama',
-              'nim': '2415051095',
-            },
-            'courses': <dynamic>[],
-          }),
+      withCourseState(
+        MaterialApp(
+          home: MainNavigationPage(
+            studentFuture: Future.value({
+              'student': {
+                'name': 'Gede Rifki Swastika Utama',
+                'nim': '2415051095',
+              },
+              'courses': <dynamic>[],
+            }),
+          ),
         ),
       ),
     );
@@ -451,15 +454,15 @@ void main() {
     for (final (width, expectedColumns) in breakpoints) {
       tester.view.physicalSize = Size(width, 900);
       await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: SingleChildScrollView(
-              child: CourseGrid(
-                courses: courses,
-                studentName: 'Mahasiswa Tes',
-                studentNim: '123456',
-                favoriteCourseCodes: const {},
-                onToggleFavorite: (_) {},
+        withCourseState(
+          MaterialApp(
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: CourseGrid(
+                  courses: courses,
+                  studentName: 'Mahasiswa Tes',
+                  studentNim: '123456',
+                ),
               ),
             ),
           ),
@@ -526,17 +529,17 @@ void main() {
     }
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: HomePage(
-          studentFuture: Future.value({
-            'student': {
-              'name': 'Gede Rifki Swastika Utama',
-              'nim': '2415051095',
-            },
-            'courses': <dynamic>[],
-          }),
-          favoriteCourseCodes: const {},
-          onToggleFavorite: (_) {},
+      withCourseState(
+        MaterialApp(
+          home: HomePage(
+            studentFuture: Future.value({
+              'student': {
+                'name': 'Gede Rifki Swastika Utama',
+                'nim': '2415051095',
+              },
+              'courses': <dynamic>[],
+            }),
+          ),
         ),
       ),
     );
@@ -598,14 +601,14 @@ void main() {
     };
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: CourseGrid(
-            courses: [course],
-            studentName: 'Gede Rifki Swastika Utama',
-            studentNim: '2415051095',
-            favoriteCourseCodes: const {},
-            onToggleFavorite: (_) {},
+      withCourseState(
+        MaterialApp(
+          home: Scaffold(
+            body: CourseGrid(
+              courses: [course],
+              studentName: 'Gede Rifki Swastika Utama',
+              studentNim: '2415051095',
+            ),
           ),
         ),
       ),
@@ -635,7 +638,6 @@ void main() {
     WidgetTester tester,
   ) async {
     var tapped = false;
-    var isFavorite = false;
     final course = {
       'code': 'MOB01',
       'title': 'Flutter UI Fundamentals',
@@ -644,18 +646,14 @@ void main() {
     };
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: SizedBox(
-              width: 340,
-              child: StatefulBuilder(
-                builder: (context, setState) => CourseItemCard(
+      withCourseState(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 340,
+                child: CourseItemCard(
                   course: course,
-                  isFavorite: isFavorite,
-                  onToggleFavorite: () {
-                    setState(() => isFavorite = !isFavorite);
-                  },
                   onTap: () async {
                     tapped = true;
                     await Future<void>.delayed(
@@ -714,19 +712,21 @@ void main() {
     };
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: Center(
-            child: SizedBox(
-              width: 340,
-              child: CourseItemCard(
-                course: course,
-                isFavorite: false,
-                onToggleFavorite: () {},
-                onTap: () async {
-                  openCount++;
-                  await Future<void>.delayed(const Duration(milliseconds: 500));
-                },
+      withCourseState(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 340,
+                child: CourseItemCard(
+                  course: course,
+                  onTap: () async {
+                    openCount++;
+                    await Future<void>.delayed(
+                      const Duration(milliseconds: 500),
+                    );
+                  },
+                ),
               ),
             ),
           ),
