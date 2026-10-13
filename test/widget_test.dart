@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import 'package:flutter_ui_fundamentals/course_state.dart';
 import 'package:flutter_ui_fundamentals/main.dart';
+import 'package:flutter_ui_fundamentals/models/course.dart';
 
 Widget withCourseState(Widget child) => ChangeNotifierProvider<CourseState>(
   create: (_) => CourseState(),
@@ -27,6 +28,21 @@ void main() {
     expect(notificationCount, 2);
 
     state.dispose();
+  });
+
+  test('Course.fromJson creates a typed course model', () {
+    final course = Course.fromJson({
+      'code': 'MOB03',
+      'title': 'Flutter UI Fundamentals',
+      'credits': 3,
+      'status': 'active',
+    });
+
+    expect(course.code, 'MOB03');
+    expect(course.title, 'Flutter UI Fundamentals');
+    expect(course.credits, 3);
+    expect(course.status, 'active');
+    expect(course.grade, '-');
   });
 
   testWidgets('dashboard loads student information', (
@@ -459,7 +475,7 @@ void main() {
             home: Scaffold(
               body: SingleChildScrollView(
                 child: CourseGrid(
-                  courses: courses,
+                  courses: courses.map(Course.fromJson).toList(),
                   studentName: 'Mahasiswa Tes',
                   studentNim: '123456',
                 ),
@@ -605,7 +621,7 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: CourseGrid(
-              courses: [course],
+              courses: [Course.fromJson(course)],
               studentName: 'Gede Rifki Swastika Utama',
               studentNim: '2415051095',
             ),
@@ -653,7 +669,7 @@ void main() {
               child: SizedBox(
                 width: 340,
                 child: CourseItemCard(
-                  course: course,
+                  course: Course.fromJson(course),
                   onTap: () async {
                     tapped = true;
                     await Future<void>.delayed(
@@ -719,7 +735,7 @@ void main() {
               child: SizedBox(
                 width: 340,
                 child: CourseItemCard(
-                  course: course,
+                  course: Course.fromJson(course),
                   onTap: () async {
                     openCount++;
                     await Future<void>.delayed(

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:provider/provider.dart';
 
 import 'course_state.dart';
+import 'models/course.dart';
 
 const defaultStudentName = 'Gede Rifki Swastika Utama';
 const defaultStudentNim = '2415051095';
@@ -42,6 +43,13 @@ Future<Map<String, dynamic>> loadStudentData() async {
       ],
     };
   }
+}
+
+List<Course> parseCourses(Map<String, dynamic> data) {
+  final courseJson = data['courses'] as List<dynamic>;
+  return courseJson
+      .map((json) => Course.fromJson(json as Map<String, dynamic>))
+      .toList(growable: false);
 }
 
 class MyApp extends StatelessWidget {
@@ -246,7 +254,7 @@ class _HomePageState extends State<HomePage> {
             // 3. Data Loaded State
             final data = snapshot.data!;
             final student = data['student'] as Map<String, dynamic>;
-            final courses = data['courses'] as List<dynamic>;
+            final courses = parseCourses(data);
 
             final String studentName =
                 student['name'] as String? ?? 'Gede Rifki Swastika Utama';
@@ -254,15 +262,10 @@ class _HomePageState extends State<HomePage> {
 
             // Menghitung Statistik Dinamis dengan aman
             final int totalCourses = courses.length;
-            final int totalCredits = courses.fold<int>(0, (sum, item) {
-              final creditValue = (item as Map<String, dynamic>)['credits'];
-              if (creditValue is int) {
-                return sum + creditValue;
-              } else if (creditValue is String) {
-                return sum + (int.tryParse(creditValue) ?? 0);
-              }
-              return sum;
-            });
+            final totalCredits = courses.fold<int>(
+              0,
+              (sum, course) => sum + course.credits,
+            );
 
             return ListView(
               padding: const EdgeInsets.all(16.0),
@@ -373,7 +376,7 @@ class CoursesPage extends StatelessWidget {
           }
 
           final student = snapshot.data!['student'] as Map<String, dynamic>;
-          final courses = snapshot.data!['courses'] as List<dynamic>;
+          final courses = parseCourses(snapshot.data!);
           final studentName = student['name'] as String? ?? defaultStudentName;
           final studentNim = student['nim'] as String? ?? defaultStudentNim;
           return ListView(
@@ -1096,7 +1099,7 @@ class LayoutPracticeSection extends StatelessWidget {
 }
 
 class CourseGrid extends StatelessWidget {
-  final List<dynamic> courses;
+  final List<Course> courses;
   final String studentName;
   final String studentNim;
 
@@ -1128,7 +1131,7 @@ class CourseGrid extends StatelessWidget {
             mainAxisExtent: 152,
           ),
           itemBuilder: (context, index) {
-            final course = courses[index] as Map<String, dynamic>;
+            final course = courses[index];
             return CourseItemCard(
               course: course,
               onTap: () async {
@@ -1143,7 +1146,7 @@ class CourseGrid extends StatelessWidget {
                   ),
                 );
                 if (result == true && context.mounted) {
-                  final courseCode = course['code'] as String? ?? '';
+                  final courseCode = course.code;
                   final courseState = context.read<CourseState>();
                   if (!courseState.favorites.contains(courseCode)) {
                     courseState.toggleFavorite(courseCode);
@@ -1164,7 +1167,7 @@ class CourseGrid extends StatelessWidget {
 }
 
 class CourseDetailPage extends StatelessWidget {
-  final Map<String, dynamic> course;
+  final Course course;
   final String studentName;
   final String studentNim;
 
@@ -1177,11 +1180,6 @@ class CourseDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = course['title'] as String? ?? 'Mata Kuliah';
-    final code = course['code'] as String? ?? '-';
-    final credits = course['credits']?.toString() ?? '-';
-    final status = course['status'] as String? ?? '-';
-
     return Scaffold(
       appBar: AppBar(title: const Text('Detail Mata Kuliah')),
       body: ListView(
@@ -1193,13 +1191,16 @@ class CourseDetailPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: Theme.of(context).textTheme.titleLarge),
+                  Text(
+                    course.title,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
                   const SizedBox(height: 20),
-                  Text('Kode: $code'),
+                  Text('Kode: ${course.code}'),
                   const SizedBox(height: 12),
-                  Text('Kredit: $credits SKS'),
+                  Text('Kredit: ${course.credits} SKS'),
                   const SizedBox(height: 12),
-                  Text('Status: ${status.toUpperCase()}'),
+                  Text('Status: ${course.status.toUpperCase()}'),
                 ],
               ),
             ),
@@ -1340,7 +1341,7 @@ class StatCard extends StatelessWidget {
 // REUSABLE WIDGET 3: Course Item Card
 // ==========================================
 class CourseItemCard extends StatefulWidget {
-  final Map<String, dynamic> course;
+  final Course course;
   final Future<void> Function() onTap;
 
   const CourseItemCard({super.key, required this.course, required this.onTap});
@@ -1368,11 +1369,11 @@ class _CourseItemCardState extends State<CourseItemCard> {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(course['title'] as String? ?? 'Mata Kuliah'),
+        title: Text(course.title),
         content: Text(
-          'Kode: ${course['code'] ?? '-'}\n'
-          'Kredit: ${course['credits'] ?? '-'} SKS\n'
-          'Status: ${(course['status'] as String? ?? '-').toUpperCase()}',
+          'Kode: ${course.code}\n'
+          'Kredit: ${course.credits} SKS\n'
+          'Status: ${course.status.toUpperCase()}',
         ),
         actions: [
           TextButton(
@@ -1387,8 +1388,7 @@ class _CourseItemCardState extends State<CourseItemCard> {
   @override
   Widget build(BuildContext context) {
     final course = widget.course;
-    final String status = course['status'] as String? ?? 'planned';
-    final String grade = course['grade'] as String? ?? '-';
+    final status = course.status;
 
     Color statusColor = const Color.fromARGB(255, 240, 239, 239);
     IconData statusIcon = Icons.help_outline;
@@ -1419,7 +1419,7 @@ class _CourseItemCardState extends State<CourseItemCard> {
                 children: [
                   Expanded(
                     child: Text(
-                      course['code'] as String? ?? '',
+                      course.code,
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -1430,16 +1430,16 @@ class _CourseItemCardState extends State<CourseItemCard> {
                   Consumer<CourseState>(
                     builder: (context, courseState, child) {
                       final isFavorite = courseState.favorites.contains(
-                        course['code'],
+                        course.code,
                       );
                       return IconButton(
-                        key: ValueKey('course-favorite-${course['code']}'),
+                        key: ValueKey('course-favorite-${course.code}'),
                         tooltip: isFavorite
                             ? 'Hapus dari favorite'
                             : 'Tambah ke favorite',
                         onPressed: () => context
                             .read<CourseState>()
-                            .toggleFavorite(course['code'] as String? ?? ''),
+                            .toggleFavorite(course.code),
                         visualDensity: VisualDensity.compact,
                         icon: Icon(
                           isFavorite ? Icons.favorite : Icons.favorite_border,
@@ -1478,14 +1478,14 @@ class _CourseItemCardState extends State<CourseItemCard> {
               ),
               const SizedBox(height: 8),
               Text(
-                course['title'] as String? ?? '',
+                course.title,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 4),
               Text(
-                '${course['credits']} SKS • Nilai: $grade',
+                '${course.credits} SKS • Nilai: ${course.grade}',
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
