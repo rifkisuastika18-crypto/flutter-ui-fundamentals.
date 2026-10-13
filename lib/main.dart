@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'course_state.dart';
 import 'models/course.dart';
+import 'repositories/course_repository.dart';
 import 'services/course_service.dart';
 
 const defaultStudentName = 'Gede Rifki Swastika Utama';
@@ -18,7 +19,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => CourseState(),
+      create: (_) => CourseState(repository: CourseRepository(CourseService())),
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Course Explorer',
@@ -39,7 +40,6 @@ class MainNavigationPage extends StatefulWidget {
 }
 
 class _MainNavigationPageState extends State<MainNavigationPage> {
-  late final CourseService _courseService;
   late final Future<Map<String, dynamic>> _studentFuture;
   final _pageStackKey = GlobalKey();
   int _selectedIndex = 0;
@@ -47,8 +47,8 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   @override
   void initState() {
     super.initState();
-    _courseService = CourseService();
-    _studentFuture = widget.studentFuture ?? _courseService.loadStudentData();
+    _studentFuture =
+        widget.studentFuture ?? context.read<CourseState>().getStudentData();
   }
 
   List<Widget> _buildPages() => [
@@ -146,24 +146,10 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   }
 }
 
-class HomePage extends StatefulWidget {
-  final Future<Map<String, dynamic>>? studentFuture;
+class HomePage extends StatelessWidget {
+  final Future<Map<String, dynamic>> studentFuture;
 
-  const HomePage({super.key, this.studentFuture});
-
-  @override
-  State<HomePage> createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  late Future<Map<String, dynamic>> studentFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    // Inisialisasi Future hanya sekali saat widget dibuat
-    studentFuture = widget.studentFuture ?? CourseService().loadStudentData();
-  }
+  const HomePage({super.key, required this.studentFuture});
 
   @override
   Widget build(BuildContext context) {
@@ -216,9 +202,7 @@ class _HomePageState extends State<HomePage> {
             // 3. Data Loaded State
             final data = snapshot.data!;
             final student = data['student'] as Map<String, dynamic>;
-            final courses = CourseService.parseCourses(
-              data['courses'] as List<dynamic>,
-            );
+            final courses = data['courses'] as List<Course>;
 
             final String studentName =
                 student['name'] as String? ?? 'Gede Rifki Swastika Utama';
@@ -340,9 +324,6 @@ class CoursesPage extends StatelessWidget {
           }
 
           final student = snapshot.data!['student'] as Map<String, dynamic>;
-          final courses = CourseService.parseCourses(
-            snapshot.data!['courses'] as List<dynamic>,
-          );
           final studentName = student['name'] as String? ?? defaultStudentName;
           final studentNim = student['nim'] as String? ?? defaultStudentNim;
           return ListView(
@@ -358,17 +339,38 @@ class CoursesPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              const FavoriteCountLabel(),
-              const SizedBox(height: 12),
-              Text(
-                '${courses.length} mata kuliah',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const SizedBox(height: 12),
-              CourseGrid(
-                courses: courses,
-                studentName: studentName,
-                studentNim: studentNim,
+              FutureBuilder<List<Course>>(
+                future: context.read<CourseState>().getCourses(),
+                builder: (context, courseSnapshot) {
+                  if (courseSnapshot.connectionState ==
+                      ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (courseSnapshot.hasError || !courseSnapshot.hasData) {
+                    return const Center(
+                      child: Text('Data course tidak tersedia.'),
+                    );
+                  }
+
+                  final courses = courseSnapshot.data!;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const FavoriteCountLabel(),
+                      const SizedBox(height: 12),
+                      Text(
+                        '${courses.length} mata kuliah',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 12),
+                      CourseGrid(
+                        courses: courses,
+                        studentName: studentName,
+                        studentNim: studentNim,
+                      ),
+                    ],
+                  );
+                },
               ),
             ],
           );
@@ -1454,7 +1456,10 @@ class _CourseItemCardState extends State<CourseItemCard> {
                 '${course.credits} SKS • Nilai: ${course.grade}',
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: const Color.fromARGB(255, 7, 7, 7),
+                ),
               ),
             ],
           ),

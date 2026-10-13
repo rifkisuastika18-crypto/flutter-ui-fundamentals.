@@ -6,17 +6,34 @@ import 'package:provider/provider.dart';
 
 import 'package:flutter_ui_fundamentals/course_state.dart';
 import 'package:flutter_ui_fundamentals/main.dart';
+import 'package:flutter_ui_fundamentals/repositories/course_repository.dart';
 import 'package:flutter_ui_fundamentals/services/course_service.dart';
 import 'package:flutter_ui_fundamentals/models/course.dart';
 
-Widget withCourseState(Widget child) => ChangeNotifierProvider<CourseState>(
-  create: (_) => CourseState(),
-  child: child,
-);
+class FakeCourseService extends CourseService {
+  final List<Course> courses;
+  int loadCoursesCount = 0;
+
+  FakeCourseService(this.courses);
+
+  @override
+  Future<List<Course>> loadCourses() async {
+    loadCoursesCount++;
+    return courses;
+  }
+}
+
+Widget withCourseState(Widget child, {List<Course> courses = const []}) {
+  return ChangeNotifierProvider<CourseState>(
+    create: (_) =>
+        CourseState(repository: CourseRepository(FakeCourseService(courses))),
+    child: child,
+  );
+}
 
 void main() {
   test('CourseState toggles favorites and notifies listeners', () {
-    final state = CourseState();
+    final state = CourseState(repository: CourseRepository(CourseService()));
     var notificationCount = 0;
     state.addListener(() => notificationCount++);
 
@@ -49,6 +66,8 @@ void main() {
   testWidgets('CourseService loads typed courses from the JSON asset', (
     WidgetTester tester,
   ) async {
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
     final courses = await CourseService().loadCourses();
 
     expect(courses, hasLength(5));
@@ -57,6 +76,21 @@ void main() {
     expect(courses.first.title, 'Git & GitHub');
     expect(courses.first.credits, 2);
     expect(courses.first.status, 'done');
+  });
+
+  test('CourseRepository delegates course loading to its service', () async {
+    const expectedCourse = Course(
+      code: 'TEST01',
+      title: 'Repository test',
+      credits: 3,
+      status: 'active',
+    );
+    final service = FakeCourseService([expectedCourse]);
+    final repository = CourseRepository(service);
+    final courses = await repository.getCourses();
+
+    expect(courses, [expectedCourse]);
+    expect(service.loadCoursesCount, 1);
   });
 
   testWidgets('dashboard loads student information', (
@@ -69,12 +103,13 @@ void main() {
             studentFuture: Future.value({
               'student': {'name': defaultStudentName, 'nim': defaultStudentNim},
               'courses': [
-                {
-                  'code': 'MOB01',
-                  'title': 'Git & GitHub',
-                  'credits': 2,
-                  'status': 'done',
-                },
+                Course(
+                  code: 'MOB01',
+                  title: 'Git & GitHub',
+                  credits: 2,
+                  status: 'done',
+                  grade: 'A',
+                ),
               ],
             }),
           ),
@@ -185,7 +220,7 @@ void main() {
                 'name': 'Gede Rifki Swastika Utama',
                 'nim': '2415051095',
               },
-              'courses': <dynamic>[],
+              'courses': <Course>[],
             }),
           ),
         ),
@@ -241,14 +276,21 @@ void main() {
   testWidgets('favorite state is shared between Home and Courses', (
     WidgetTester tester,
   ) async {
-    final courses = [
-      {
-        'code': 'SHR01',
-        'title': 'Shared State',
-        'credits': 2,
-        'status': 'done',
-      },
-      {'code': 'SHR02', 'title': 'Callbacks', 'credits': 3, 'status': 'active'},
+    final courses = <Course>[
+      const Course(
+        code: 'MOB01',
+        title: 'Git & GitHub',
+        credits: 2,
+        status: 'done',
+        grade: 'A',
+      ),
+      const Course(
+        code: 'MOB02',
+        title: 'Dart Fundamentals',
+        credits: 2,
+        status: 'done',
+        grade: 'A',
+      ),
     ];
     await tester.pumpWidget(
       withCourseState(
@@ -260,12 +302,13 @@ void main() {
             }),
           ),
         ),
+        courses: courses,
       ),
     );
     await tester.pump();
     await tester.pump();
 
-    final favoriteKey = const ValueKey('course-favorite-SHR01');
+    final favoriteKey = const ValueKey('course-favorite-MOB01');
     expect(find.byIcon(Icons.favorite_border), findsNWidgets(2));
     await tester.tap(find.byKey(favoriteKey));
     await tester.pump();
@@ -322,10 +365,17 @@ void main() {
       await tester.pumpWidget(
         withCourseState(
           MaterialApp(home: CoursesPage(studentFuture: studentFuture)),
+          courses: courses.map(Course.fromJson).toList(),
         ),
       );
       await tester.pump();
-      await tester.pump();
+      for (
+        var frame = 0;
+        frame < 20 && find.text('5 mata kuliah').evaluate().isEmpty;
+        frame++
+      ) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
 
       expect(find.text('Course Explorer'), findsOneWidget);
       expect(find.text(defaultStudentName), findsOneWidget);
@@ -376,7 +426,7 @@ void main() {
                 'name': 'Gede Rifki Swastika Utama',
                 'nim': '2415051095',
               },
-              'courses': <dynamic>[],
+              'courses': <Course>[],
             }),
           ),
         ),
@@ -587,7 +637,7 @@ void main() {
                 'name': 'Gede Rifki Swastika Utama',
                 'nim': '2415051095',
               },
-              'courses': <dynamic>[],
+              'courses': <Course>[],
             }),
           ),
         ),
