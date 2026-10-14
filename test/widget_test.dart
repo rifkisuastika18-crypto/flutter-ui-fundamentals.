@@ -846,4 +846,84 @@ void main() {
     await tester.pump();
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('CourseDetailPage shows favorite status and toggles favorite', (
+    WidgetTester tester,
+  ) async {
+    final course = const Course(
+      code: 'MOB01',
+      title: 'Git & GitHub',
+      credits: 2,
+      status: 'done',
+      grade: 'A',
+    );
+
+    await tester.pumpWidget(
+      withCourseState(
+        MaterialApp(
+          home: CourseDetailPage(
+            course: course,
+            studentName: defaultStudentName,
+            studentNim: defaultStudentNim,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Status Favorit: Bukan Favorit'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('detail-favorite-toggle')));
+    await tester.pump();
+    expect(find.text('Status Favorit: Favorit'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('FavoritesPage shows empty state and filters favorited courses', (
+    WidgetTester tester,
+  ) async {
+    final courses = [
+      const Course(
+        code: 'MOB01',
+        title: 'Git & GitHub',
+        credits: 2,
+        status: 'done',
+        grade: 'A',
+      ),
+      const Course(
+        code: 'MOB02',
+        title: 'Dart Fundamentals',
+        credits: 2,
+        status: 'done',
+        grade: 'A',
+      ),
+    ];
+
+    await tester.pumpWidget(
+      withCourseState(
+        MaterialApp(
+          home: FavoritesPage(
+            studentFuture: Future.value({
+              'student': {'name': defaultStudentName, 'nim': defaultStudentNim},
+              'courses': courses,
+            }),
+          ),
+        ),
+        courses: courses,
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Belum ada mata kuliah favorit'), findsOneWidget);
+
+    // Favorite MOB01
+    final context = tester.element(find.byType(FavoritesPage));
+    Provider.of<CourseState>(context, listen: false).toggleFavorite('MOB01');
+    await tester.pump();
+
+    expect(find.text('1 mata kuliah favorit'), findsOneWidget);
+    expect(find.text('Git & GitHub'), findsOneWidget);
+    expect(find.text('Dart Fundamentals'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 }

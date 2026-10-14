@@ -21,14 +21,15 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => CourseState(repository: CourseRepository(CourseService())),
+      create: (BuildContext _) =>
+          CourseState(repository: CourseRepository(CourseService())),
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         title: 'Course Explorer',
         theme: ThemeData(useMaterial3: true, colorSchemeSeed: Colors.indigo),
         home: const MainNavigationPage(),
-      ),
-    );
+      ), // MaterialApp
+    ); // ChangeNotifierProvider
   }
 }
 
@@ -302,6 +303,18 @@ class CoursesPage extends StatelessWidget {
         title: const Text('Course Explorer'),
         actions: [
           IconButton(
+            key: const ValueKey('open-favorites-page'),
+            tooltip: 'Mata Kuliah Favorit',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (context) => FavoritesPage(studentFuture: studentFuture),
+                ),
+              );
+            },
+            icon: const Icon(Icons.favorite),
+          ),
+          IconButton(
             key: const ValueKey('open-bounded-list-demo'),
             tooltip: 'Demo list di dalam Column',
             onPressed: () {
@@ -375,6 +388,77 @@ class CoursesPage extends StatelessWidget {
                 },
               ),
             ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class FavoritesPage extends StatelessWidget {
+  final Future<Map<String, dynamic>> studentFuture;
+
+  const FavoritesPage({super.key, required this.studentFuture});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Mata Kuliah Favorit')),
+      body: FutureBuilder<Map<String, dynamic>>(
+        future: studentFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (snapshot.hasError || !snapshot.hasData) {
+            return const Center(child: Text('Data course tidak tersedia.'));
+          }
+
+          final student = snapshot.data!['student'] as Map<String, dynamic>;
+          final studentName = student['name'] as String? ?? defaultStudentName;
+          final studentNim = student['nim'] as String? ?? defaultStudentNim;
+          final courses = snapshot.data!['courses'] as List<Course>;
+
+          return Consumer<CourseState>(
+            builder: (context, courseState, child) {
+              final favoriteCourses = courses
+                  .where((c) => courseState.favorites.contains(c.code))
+                  .toList();
+
+              if (favoriteCourses.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.favorite_border, size: 64, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Belum ada mata kuliah favorit',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: Colors.grey.shade600,
+                            ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  Text(
+                    '${favoriteCourses.length} mata kuliah favorit',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 12),
+                  CourseGrid(
+                    courses: favoriteCourses,
+                    studentName: studentName,
+                    studentNim: studentNim,
+                  ),
+                ],
+              );
+            },
           );
         },
       ),
@@ -1157,25 +1241,57 @@ class CourseDetailPage extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    course.title,
-                    style: Theme.of(context).textTheme.titleLarge,
+          Consumer<CourseState>(
+            builder: (context, courseState, child) {
+              final isFavorite = courseState.favorites.contains(course.code);
+              return Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              course.title,
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
+                          ),
+                          IconButton(
+                            key: const ValueKey('detail-favorite-toggle'),
+                            tooltip: isFavorite
+                                ? 'Hapus dari favorite'
+                                : 'Tambah ke favorite',
+                            onPressed: () {
+                              courseState.toggleFavorite(course.code);
+                            },
+                            icon: Icon(
+                              isFavorite ? Icons.favorite : Icons.favorite_border,
+                              color: isFavorite ? Colors.red : Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      Text('Kode: ${course.code}'),
+                      const SizedBox(height: 12),
+                      Text('Kredit: ${course.credits} SKS'),
+                      const SizedBox(height: 12),
+                      Text('Status: ${course.status.toUpperCase()}'),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Status Favorit: ${isFavorite ? 'Favorit' : 'Bukan Favorit'}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: isFavorite ? Colors.red : Colors.grey.shade700,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 20),
-                  Text('Kode: ${course.code}'),
-                  const SizedBox(height: 12),
-                  Text('Kredit: ${course.credits} SKS'),
-                  const SizedBox(height: 12),
-                  Text('Status: ${course.status.toUpperCase()}'),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
           const SizedBox(height: 16),
           const Text(
@@ -1191,11 +1307,21 @@ class CourseDetailPage extends StatelessWidget {
             subtitle: Text('NIM: $studentNim'),
           ),
           const SizedBox(height: 16),
-          FilledButton.icon(
-            key: const ValueKey('favorite-course'),
-            onPressed: () => Navigator.pop(context, true),
-            icon: const Icon(Icons.favorite_outline),
-            label: const Text('Pilih / Favorite'),
+          Consumer<CourseState>(
+            builder: (context, courseState, child) {
+              final isFavorite = courseState.favorites.contains(course.code);
+              return FilledButton.icon(
+                key: const ValueKey('favorite-course'),
+                onPressed: () {
+                  if (!isFavorite) {
+                    courseState.toggleFavorite(course.code);
+                  }
+                  Navigator.pop(context, true);
+                },
+                icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_outline),
+                label: Text(isFavorite ? 'Sudah Favorit (Kembali)' : 'Pilih / Favorite'),
+              );
+            },
           ),
         ],
       ),
@@ -1312,6 +1438,8 @@ class StatCard extends StatelessWidget {
 // ==========================================
 // REUSABLE WIDGET 3: Course Item Card
 // ==========================================
+typedef CourseCard = CourseItemCard;
+
 class CourseItemCard extends StatefulWidget {
   final Course course;
   final Future<void> Function() onTap;
